@@ -1,0 +1,14 @@
+[package]
+name = "axum-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7.5"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.120"
+tokio = { version = "1.38.0", features = ["macros", "rt-multi-thread"] }
+
+[dev-dependencies]
+httpc-test = "0.1.9"
+anyhow = "1.0.86"
