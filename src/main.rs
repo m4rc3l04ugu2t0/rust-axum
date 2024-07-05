@@ -1,13 +1,17 @@
 use axum::extract::{Path, Query};
-use axum::response::{Html, IntoResponse};
+use axum::middleware;
+use axum::response::{Html, IntoResponse, Response};
 use axum::routing::get_service;
 use axum::{routing::get, Router};
+use model::ModelController;
 use serde::Deserialize;
+use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 
 pub use self::error::{Error, Result};
 
 mod error;
+mod model;
 mod web;
 
 #[derive(Debug, Deserialize)]
@@ -16,15 +20,22 @@ struct HelloParams {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
+    let mc = ModelController::new().await?;
+
     let routes_all = Router::new()
         .merge(routes_hello())
         .merge(web::routes_login::routes())
+        .nest("/api", web::routes_tickets::routes(mc.clone()))
+        .layer(middleware::map_response(main_response_mapper))
+        .layer(CookieManagerLayer::new())
         .fallback_service(routes_static());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
     axum::serve(listener, routes_all).await.unwrap();
+
+    Ok(())
 }
 
 fn routes_hello() -> Router {
@@ -43,6 +54,12 @@ async fn handler_hello2(Path(name): Path<String>) -> impl IntoResponse {
     println!("->> {:<12} - handler_hello2 - {name:?}", "HANDLE");
 
     Html(format!("Hello2 <strong>{name}</strong>"))
+}
+
+async fn main_response_mapper(res: Response) -> Response {
+    println!("->> {:<12} - main_response_mapper -", "RES_MAPPER");
+    println!();
+    res
 }
 
 fn routes_static() -> Router {
